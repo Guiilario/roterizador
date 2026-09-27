@@ -38,26 +38,70 @@ function haversineMatrix(points) {
   return dist;
 }
 
-/** Consulta o endpoint /table do OSRM — equivalente exato ao passo 2 do script Python. */
+/** Consulta o endpoint /table do OSRM ou o Matrix do ORS se tiver API Key */
 async function fetchDistanceMatrix(points) {
-  const coords = points.map((p) => `${p.lon},${p.lat}`).join(";");
-  const url = `${OSRM_BASE}/table/v1/driving/${coords}?annotations=distance,duration`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Serviço de matriz do OSRM indisponível");
-  const data = await res.json();
-  if (data.code !== "Ok") throw new Error(data.message || "Erro do OSRM ao montar a matriz");
-  return { distances: data.distances, durations: data.durations };
+  const orsKey = localStorage.getItem("rotafacil_ors_key");
+  
+  if (orsKey && orsKey.trim() !== "") {
+    // Usar OpenRouteService
+    const locations = points.map((p) => [p.lon, p.lat]);
+    const res = await fetch("https://api.openrouteservice.org/v2/matrix/driving-car", {
+      method: "POST",
+      headers: {
+        "Authorization": orsKey.trim(),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        locations,
+        metrics: ["distance", "duration"]
+      })
+    });
+    if (!res.ok) throw new Error("Serviço do OpenRouteService indisponível ou chave inválida");
+    const data = await res.json();
+    return { distances: data.distances, durations: data.durations };
+  } else {
+    // Usar OSRM público (padrão)
+    const coords = points.map((p) => `${p.lon},${p.lat}`).join(";");
+    const url = `${OSRM_BASE}/table/v1/driving/${coords}?annotations=distance,duration`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Serviço de matriz do OSRM indisponível");
+    const data = await res.json();
+    if (data.code !== "Ok") throw new Error(data.message || "Erro do OSRM ao montar a matriz");
+    return { distances: data.distances, durations: data.durations };
+  }
 }
 
 /** Busca a geometria real (rua a rua) para desenhar a rota já otimizada no mapa. */
 async function fetchRouteGeometry(orderedPoints) {
-  const coords = orderedPoints.map((p) => `${p.lon},${p.lat}`).join(";");
-  const url = `${OSRM_BASE}/route/v1/driving/${coords}?geometries=geojson&overview=full`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Serviço de rota do OSRM indisponível");
-  const data = await res.json();
-  if (data.code !== "Ok") throw new Error(data.message || "Erro do OSRM ao traçar a rota");
-  return data.routes[0];
+  const orsKey = localStorage.getItem("rotafacil_ors_key");
+  
+  if (orsKey && orsKey.trim() !== "") {
+    const coordinates = orderedPoints.map((p) => [p.lon, p.lat]);
+    const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car/geojson", {
+      method: "POST",
+      headers: {
+        "Authorization": orsKey.trim(),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ coordinates })
+    });
+    if (!res.ok) throw new Error("Serviço de rota do ORS indisponível");
+    const data = await res.json();
+    const routeFeature = data.features[0];
+    return { 
+      geometry: routeFeature.geometry,
+      distance: routeFeature.properties.summary.distance,
+      duration: routeFeature.properties.summary.duration
+    };
+  } else {
+    const coords = orderedPoints.map((p) => `${p.lon},${p.lat}`).join(";");
+    const url = `${OSRM_BASE}/route/v1/driving/${coords}?geometries=geojson&overview=full`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Serviço de rota do OSRM indisponível");
+    const data = await res.json();
+    if (data.code !== "Ok") throw new Error(data.message || "Erro do OSRM ao traçar a rota");
+    return data.routes[0];
+  }
 }
 
 /* ---------------- solver local (nearest-neighbor + 2-opt) ---------------- */

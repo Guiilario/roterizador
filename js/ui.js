@@ -613,6 +613,14 @@ export function bindEvents() {
     showToast("Tudo limpo!", "info");
   });
 
+  // ORS API Key
+  const orsInput = $("#orsApiKey");
+  orsInput.value = localStorage.getItem("rotafacil_ors_key") || "";
+  orsInput.addEventListener("change", (e) => {
+    localStorage.setItem("rotafacil_ors_key", e.target.value.trim());
+    if (e.target.value.trim()) showToast("Chave da API salva!", "success");
+  });
+
   // Restaura dados salvos
   $("#depotInput").value = state.depot.address || "";
   if (state.depot.address && depotAC) depotAC.setVerified(state.depot.address);
