@@ -9,6 +9,7 @@ import { redrawMap, invalidateSize, toggleMapTheme, isMapDark } from "./map.js";
 import { speechSupported, createRecognizer } from "./voice.js";
 import { AutocompleteController } from "./autocomplete.js";
 import { showToast } from "./toast.js";
+import { checkRouteReady } from "./execution.js";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -501,6 +502,9 @@ export function updateStats() {
   // Badges
   $("#stopsCountBadge").textContent = total;
   $("#statPending").textContent = pending;
+
+  // Atualiza exibição do botão Iniciar Rota
+  checkRouteReady();
 }
 
 /* =========================================================================

@@ -570,5 +570,70 @@ textarea{min-height:80px;font-size:12.5px;line-height:1.5}
   .card{border-color:#ddd}
   .stop-badge{background:#333 !important;color:#fff !important;box-shadow:none}
   .stop-row{border-bottom:1px solid #ddd}
-  .tag{border:1px solid #ccc;background:transparent !important}
 }
+
+/* ════════════════════════ MODO EXECUÇÃO (NAVEGAÇÃO) ═══════════ */
+.execution-mode {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex; flex-direction: column;
+}
+.execution-map-slot {
+  flex: 1; min-height: 0;
+  position: relative;
+}
+.execution-map-slot #map {
+  width: 100%; height: 100%; border-radius: 0; border: none;
+}
+.btn-exit-execution {
+  position: absolute; top: 16px; left: 16px; z-index: 900;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+  color: #fff; border: 1px solid rgba(255,255,255,0.2);
+  padding: 8px 16px; border-radius: var(--radius-pill);
+  font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.execution-bottom-sheet {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+  border-radius: 20px 20px 0 0;
+  margin-top: -16px; z-index: 900; position: relative;
+}
+.progress-bar-wrap {
+  height: 4px; background: var(--surface-2); border-radius: 4px;
+  margin-bottom: 16px; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple));
+  width: 0%; transition: width 0.3s var(--ease);
+}
+.execution-header {
+  display: flex; gap: 12px; align-items: center; margin-bottom: 20px;
+}
+.execution-stop-num {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700;
+  box-shadow: 0 4px 12px rgba(88,130,240,0.3); flex-shrink: 0;
+}
+.execution-stop-info h2 {
+  font-size: 18px; color: var(--text); margin-bottom: 4px; line-height: 1.2;
+}
+.execution-stop-info p {
+  font-size: 13.5px; color: var(--text-2); line-height: 1.4;
+}
+.execution-actions {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+}
+.execution-actions .btn {
+  padding: 12px 8px; font-size: 12.5px; flex-direction: column; gap: 4px;
+  min-height: 64px;
+}
+.btn-success {
+  background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(52,211,153,0.3);
+}
+.btn-success:hover { background: rgba(16,185,129,0.25); }
+

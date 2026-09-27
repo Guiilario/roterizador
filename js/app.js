@@ -4,11 +4,13 @@
 import { load } from "./state.js";
 import { initMap, redrawMap } from "./map.js";
 import { bindEvents, renderManifest, updateStatusbar } from "./ui.js";
+import { initExecutionMode } from "./execution.js";
 
 function init() {
   load();
   initMap();
   bindEvents();
+  initExecutionMode();
   renderManifest();
   updateStatusbar();
   redrawMap();

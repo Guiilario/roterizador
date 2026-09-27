@@ -57,6 +57,11 @@
         🚀 Otimizar rota
       </button>
       <p class="opt-status" id="optStatus"></p>
+      
+      <!-- Novo botão Iniciar Rota -->
+      <button type="button" id="btnStartRoute" class="btn btn-primary btn-block" style="display:none; margin-top:10px; padding: 14px; font-size: 16px;">
+        ▶️ Iniciar Rota
+      </button>
     </div>
   </section>
 
@@ -132,6 +137,44 @@
     <footer class="app-footer">
       100% gratuito · Nominatim/OSM · OSRM · Leaflet · sem API keys
     </footer>
+  </section>
+
+  <!-- ═══════ MODO EXECUÇÃO (NAVEGAÇÃO) ═══════ -->
+  <section id="executionMode" class="execution-mode" style="display: none;">
+    <!-- O mapa será movido para cá dinamicamente -->
+    <div id="executionMapSlot" class="execution-map-slot"></div>
+    
+    <button type="button" id="btnExitExecution" class="btn-exit-execution" title="Encerrar rota">✕ Encerrar</button>
+    
+    <div class="execution-bottom-sheet">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="executionProgress"></div>
+      </div>
+      
+      <div class="execution-header">
+        <div class="execution-stop-num" id="execStopNum">1</div>
+        <div class="execution-stop-info">
+          <h2 id="execStopName">Nome do Cliente</h2>
+          <p id="execStopAddress">Endereço completo da parada atual</p>
+        </div>
+      </div>
+
+      <div class="execution-actions">
+        <button type="button" class="btn btn-success" data-exec-action="delivered">
+          ✅ Entregue
+        </button>
+        <button type="button" class="btn btn-danger" data-exec-action="failed">
+          ❌ Não Entregue
+        </button>
+        <button type="button" class="btn btn-secondary" data-exec-action="wait">
+          ⏳ Aguardar
+        </button>
+      </div>
+
+      <a id="btnExecGmaps" href="#" target="_blank" rel="noopener" class="btn btn-block" style="background:#4285F4;color:#fff;border:none;margin-top:12px;">
+        🗺️ Navegar no Google Maps
+      </a>
+    </div>
   </section>
 
 </div>
