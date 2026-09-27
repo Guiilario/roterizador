@@ -87,19 +87,23 @@ export function redrawMap() {
   if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
   const bounds = [];
 
-  const seenCoords = new Set();
+  const seenCoords = {};
   const getJitteredCoord = (lat, lon) => {
-    let key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
-    let offsetLat = 0, offsetLon = 0;
-    let attempts = 0;
-    while (seenCoords.has(key) && attempts < 10) {
-      attempts++;
-      // Aprox 5-10 metros de offset em espiral
-      offsetLat += (Math.random() - 0.5) * 0.0001;
-      offsetLon += (Math.random() - 0.5) * 0.0001;
-      key = `${(lat + offsetLat).toFixed(5)},${(lon + offsetLon).toFixed(5)}`;
+    let key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    if (!seenCoords[key]) {
+      seenCoords[key] = 0;
     }
-    seenCoords.add(key);
+    const count = seenCoords[key];
+    seenCoords[key]++;
+    
+    if (count === 0) return [lat, lon];
+    
+    // Espalha em um círculo fixo para que nunca fiquem um em cima do outro.
+    // 0.0002 é aproximadamente 20 metros, suficiente para separar os ícones
+    const radius = 0.0002 + (Math.floor((count - 1) / 6) * 0.0001);
+    const angle = count * (Math.PI / 3); // A cada 60 graus
+    const offsetLat = Math.sin(angle) * radius;
+    const offsetLon = Math.cos(angle) * radius;
     return [lat + offsetLat, lon + offsetLon];
   };
 

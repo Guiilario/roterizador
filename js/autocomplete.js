@@ -51,10 +51,51 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
 }
 
-// ── Busca no Nominatim ──────────────────────────────────────────────────
-async function searchNominatim(query) {
+// ── Busca de Endereço (Google ou Nominatim) ─────────────────────────────
+async function searchAddressAPI(query) {
   if (query.trim().length < 3) return [];
 
+  // Se o Google Maps estiver carregado, usa ele para precisão máxima
+  if (window.google && window.google.maps) {
+    return new Promise((resolve) => {
+      const geocoder = new google.maps.Geocoder();
+      // Favorece a Baixada Santista com um bounds aproximado
+      const bounds = new google.maps.LatLngBounds(
+        new google.maps.LatLng(BBOX.south, BBOX.west),
+        new google.maps.LatLng(BBOX.north, BBOX.east)
+      );
+      
+      geocoder.geocode({ address: query, bounds: bounds, componentRestrictions: { country: "BR" } }, (results, status) => {
+        if (status !== "OK" || !results) {
+          resolve([]);
+          return;
+        }
+        
+        // Converte o formato do Google para o formato esperado pelo UI
+        const mapped = results.map(r => {
+          let road = "", number = "", sub = "", city = "", state = "";
+          r.address_components.forEach(c => {
+            if (c.types.includes("route")) road = c.long_name;
+            if (c.types.includes("street_number")) number = c.long_name;
+            if (c.types.includes("sublocality") || c.types.includes("neighborhood")) sub = c.long_name;
+            if (c.types.includes("administrative_area_level_2")) city = c.long_name;
+            if (c.types.includes("administrative_area_level_1")) state = c.short_name;
+          });
+          
+          return {
+            isGoogle: true,
+            display_name: r.formatted_address,
+            lat: r.geometry.location.lat(),
+            lon: r.geometry.location.lng(),
+            address: { road, house_number: number, suburb: sub, city, state }
+          };
+        });
+        resolve(mapped);
+      });
+    });
+  }
+
+  // Fallback para Nominatim
   const params = new URLSearchParams({
     format: "json", q: query, limit: "8",
     countrycodes: "br", addressdetails: "1",
@@ -63,10 +104,7 @@ async function searchNominatim(query) {
   });
 
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?${params}`,
-      { headers: { Accept: "application/json" } }
-    );
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { Accept: "application/json" } });
     if (!res.ok) return [];
     const data = await res.json();
 
@@ -86,6 +124,16 @@ async function searchNominatim(query) {
 
 // ── Formatar resultado ──────────────────────────────────────────────────
 function formatResult(item, userNumber = null) {
+  if (item.isGoogle) {
+    const a = item.address;
+    const num = a.house_number || userNumber || "";
+    let main = a.road ? (num ? `${a.road}, ${num}` : a.road) : item.display_name.split(",")[0];
+    const subParts = [a.suburb, a.city, a.state].filter(Boolean);
+    const cleanAddress = [a.road, num, a.suburb, a.city, a.state].filter(Boolean).join(", ");
+    return { main, sub: subParts.join(", "), cleanAddress: cleanAddress || item.display_name };
+  }
+
+  // Formato Nominatim original
   const addr = item.address || {};
   const road = addr.road || "";
   const number = addr.house_number || userNumber || "";
@@ -93,7 +141,6 @@ function formatResult(item, userNumber = null) {
   const city = addr.city || addr.town || addr.municipality || "";
   const state = addr.state || "";
 
-  // Texto principal (exibido na dropdown)
   let main = road;
   if (number) main += `, ${number}`;
   if (!main) main = item.display_name.split(",")[0];
@@ -101,7 +148,6 @@ function formatResult(item, userNumber = null) {
   const subParts = [neighbourhood, city, state].filter(Boolean);
   const sub = subParts.join(", ");
 
-  // Endereço limpo para salvar (inclui o número)
   const parts = [road, number, neighbourhood, city, state].filter(Boolean);
   const cleanAddress = parts.join(", ");
 
@@ -177,7 +223,7 @@ export class AutocompleteController {
     this.container.innerHTML = '<div class="autocomplete-loading"><span class="spinner"></span> Buscando...</div>';
     this.container.classList.add("visible");
 
-    const results = await searchNominatim(query);
+    const results = await searchAddressAPI(query);
     this.results = results;
     this.selectedIdx = -1;
 

@@ -5,6 +5,20 @@
 
 import { state, save, geocodeCacheGet, geocodeCacheSet } from "./state.js";
 
+export function loadGoogleMapsSDK(apiKey) {
+  if (!apiKey) return;
+  if (window.google && window.google.maps) return Promise.resolve();
+  if (document.querySelector('script[src*="maps.googleapis.com"]')) return Promise.resolve();
+  
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -13,7 +27,35 @@ async function geocodeAddress(address, { email, brOnly }) {
   const cached = geocodeCacheGet(address);
   if (cached) return cached;
 
-  const params = new URLSearchParams({ format: "json", q: address, limit: "1" });
+  // Usa Google Maps se estiver disponível
+  if (window.google && window.google.maps) {
+    return new Promise((resolve, reject) => {
+      const geocoder = new google.maps.Geocoder();
+      const req = { address: address };
+      if (brOnly) req.componentRestrictions = { country: "BR" };
+      
+      geocoder.geocode(req, (results, status) => {
+        if (status === "OK" && results && results[0]) {
+          const lat = results[0].geometry.location.lat();
+          const lon = results[0].geometry.location.lng();
+          const val = { lat, lon };
+          geocodeCacheSet(address, val);
+          resolve(val);
+        } else {
+          reject(new Error("Endereço não encontrado no Google Maps"));
+        }
+      });
+    });
+  }
+
+  // Fallback para Nominatim
+  const params = new URLSearchParams({ 
+    format: "json", 
+    q: address, 
+    limit: "1",
+    viewbox: "-46.80,-23.80,-46.15,-24.35",
+    bounded: "1"
+  });
   if (brOnly) params.set("countrycodes", "br");
   if (email) params.set("email", email);
 

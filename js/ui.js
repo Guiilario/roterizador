@@ -5,11 +5,12 @@
 import { state, save, orderedStops, addStops, removeStop, resetAll } from "./state.js";
 import { geocodePending, regeocodeStop } from "./geocode.js";
 import { optimize, recomputeForFixedOrder } from "./routing.js";
-import { redrawMap, invalidateSize, toggleMapTheme, isMapDark } from "./map.js";
+import { redrawMap, invalidateSize, toggleMapTheme, isMapDark, focusMapOn } from "./map.js";
 import { speechSupported, createRecognizer } from "./voice.js";
 import { AutocompleteController } from "./autocomplete.js";
 import { showToast } from "./toast.js";
 import { checkRouteReady } from "./execution.js";
+import { loadGoogleMapsSDK } from "./geocode.js";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -359,6 +360,12 @@ export function renderStops() {
     el.draggable = true;
     el.dataset.id = s.id;
 
+    // Ao clicar na linha (fora dos botões), foca no mapa
+    el.addEventListener("click", (e) => {
+      if(e.target.closest('button') || e.target.closest('input') || e.target.closest('a')) return;
+      if(s.geocoded) focusMapOn(s.lat, s.lon, 17);
+    });
+
     const badgeCls = s.error ? "stop-badge err" : "stop-badge";
     const gmapsUrl = s.geocoded
       ? `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}&travelmode=driving`
@@ -611,6 +618,20 @@ export function bindEvents() {
     $("#btnAdd").disabled = true;
     renderStops(); updateStats(); redrawMap();
     showToast("Tudo limpo!", "info");
+  });
+
+  // Google Maps API Key
+  const gmapsInput = $("#gmapsApiKey");
+  gmapsInput.value = localStorage.getItem("rotafacil_gmaps_key") || "";
+  if (gmapsInput.value) loadGoogleMapsSDK(gmapsInput.value);
+
+  gmapsInput.addEventListener("input", (e) => {
+    const key = e.target.value.trim();
+    localStorage.setItem("rotafacil_gmaps_key", key);
+    if (key) loadGoogleMapsSDK(key);
+  });
+  gmapsInput.addEventListener("change", (e) => {
+    if (e.target.value.trim()) showToast("Google API salva e carregada!", "success");
   });
 
   // ORS API Key

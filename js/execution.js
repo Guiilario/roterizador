@@ -101,9 +101,6 @@ function updateExecutionUI() {
   const pct = Math.round((currentStopIndex / routeStops.length) * 100);
   $("#executionProgress").style.width = pct + "%";
 
-  // Focar o mapa no ponto atual
-  focusMapOn(stop.lat, stop.lon, 17);
-
   // Atualiza link do Gmaps (apenas este ponto)
   const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lon}&travelmode=driving`;
   $("#btnExecGmaps").href = gmapsUrl;
