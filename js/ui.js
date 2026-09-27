@@ -616,8 +616,10 @@ export function bindEvents() {
   // ORS API Key
   const orsInput = $("#orsApiKey");
   orsInput.value = localStorage.getItem("rotafacil_ors_key") || "";
-  orsInput.addEventListener("change", (e) => {
+  orsInput.addEventListener("input", (e) => {
     localStorage.setItem("rotafacil_ors_key", e.target.value.trim());
+  });
+  orsInput.addEventListener("change", (e) => {
     if (e.target.value.trim()) showToast("Chave da API salva!", "success");
   });
 
