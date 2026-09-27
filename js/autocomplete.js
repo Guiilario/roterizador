@@ -55,47 +55,51 @@ function debounce(fn, ms) {
 async function searchAddressAPI(query) {
   if (query.trim().length < 3) return [];
 
-  // Se o Google Maps estiver carregado, usa ele para precisão máxima
+  // Se o Google Maps estiver carregado, tenta usar ele primeiro
   if (window.google && window.google.maps) {
-    return new Promise((resolve) => {
-      const geocoder = new google.maps.Geocoder();
-      // Favorece a Baixada Santista com um bounds aproximado
-      const bounds = new google.maps.LatLngBounds(
-        new google.maps.LatLng(BBOX.south, BBOX.west),
-        new google.maps.LatLng(BBOX.north, BBOX.east)
-      );
-      
-      geocoder.geocode({ address: query, bounds: bounds, componentRestrictions: { country: "BR" } }, (results, status) => {
-        if (status !== "OK" || !results) {
-          resolve([]);
-          return;
-        }
+    try {
+      const googleResults = await new Promise((resolve, reject) => {
+        const geocoder = new google.maps.Geocoder();
+        const bounds = new google.maps.LatLngBounds(
+          new google.maps.LatLng(BBOX.south, BBOX.west),
+          new google.maps.LatLng(BBOX.north, BBOX.east)
+        );
         
-        // Converte o formato do Google para o formato esperado pelo UI
-        const mapped = results.map(r => {
-          let road = "", number = "", sub = "", city = "", state = "";
-          r.address_components.forEach(c => {
-            if (c.types.includes("route")) road = c.long_name;
-            if (c.types.includes("street_number")) number = c.long_name;
-            if (c.types.includes("sublocality") || c.types.includes("neighborhood")) sub = c.long_name;
-            if (c.types.includes("administrative_area_level_2")) city = c.long_name;
-            if (c.types.includes("administrative_area_level_1")) state = c.short_name;
-          });
-          
-          return {
-            isGoogle: true,
-            display_name: r.formatted_address,
-            lat: r.geometry.location.lat(),
-            lon: r.geometry.location.lng(),
-            address: { road, house_number: number, suburb: sub, city, state }
-          };
+        geocoder.geocode({ address: query, bounds: bounds, componentRestrictions: { country: "BR" } }, (results, status) => {
+          if (status === "OK" && results) {
+            resolve(results);
+          } else {
+            reject(new Error(status));
+          }
         });
-        resolve(mapped);
       });
-    });
+
+      return googleResults.map(r => {
+        let road = "", number = "", sub = "", city = "", state = "";
+        r.address_components.forEach(c => {
+          if (c.types.includes("route")) road = c.long_name;
+          if (c.types.includes("street_number")) number = c.long_name;
+          if (c.types.includes("sublocality") || c.types.includes("neighborhood")) sub = c.long_name;
+          if (c.types.includes("administrative_area_level_2")) city = c.long_name;
+          if (c.types.includes("administrative_area_level_1")) state = c.short_name;
+        });
+        
+        return {
+          isGoogle: true,
+          display_name: r.formatted_address,
+          lat: r.geometry.location.lat(),
+          lon: r.geometry.location.lng(),
+          address: { road, house_number: number, suburb: sub, city, state }
+        };
+      });
+    } catch (err) {
+      console.warn("Google Maps Geocoder falhou, caindo para Nominatim. Erro:", err.message);
+      // Se falhou (ex: REQUEST_DENIED por falta de cartão, chave inválida, etc),
+      // ignora e deixa o código continuar para o Nominatim abaixo.
+    }
   }
 
-  // Fallback para Nominatim
+  // Fallback para Nominatim (gratuito)
   const params = new URLSearchParams({
     format: "json", q: query, limit: "8",
     countrycodes: "br", addressdetails: "1",

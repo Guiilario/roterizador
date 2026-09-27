@@ -29,23 +29,29 @@ async function geocodeAddress(address, { email, brOnly }) {
 
   // Usa Google Maps se estiver disponível
   if (window.google && window.google.maps) {
-    return new Promise((resolve, reject) => {
-      const geocoder = new google.maps.Geocoder();
-      const req = { address: address };
-      if (brOnly) req.componentRestrictions = { country: "BR" };
-      
-      geocoder.geocode(req, (results, status) => {
-        if (status === "OK" && results && results[0]) {
-          const lat = results[0].geometry.location.lat();
-          const lon = results[0].geometry.location.lng();
-          const val = { lat, lon };
-          geocodeCacheSet(address, val);
-          resolve(val);
-        } else {
-          reject(new Error("Endereço não encontrado no Google Maps"));
-        }
+    try {
+      const gResult = await new Promise((resolve, reject) => {
+        const geocoder = new google.maps.Geocoder();
+        const req = { address: address };
+        if (brOnly) req.componentRestrictions = { country: "BR" };
+        
+        geocoder.geocode(req, (results, status) => {
+          if (status === "OK" && results && results[0]) {
+            resolve(results[0]);
+          } else {
+            reject(new Error(status));
+          }
+        });
       });
-    });
+      
+      const lat = gResult.geometry.location.lat();
+      const lon = gResult.geometry.location.lng();
+      const val = { lat, lon };
+      geocodeCacheSet(address, val);
+      return val;
+    } catch (err) {
+      console.warn("Google Maps Bulk Geocoder falhou, caindo para Nominatim. Erro:", err.message);
+    }
   }
 
   // Fallback para Nominatim
