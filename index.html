@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RotaFácil — Roteirizador de Entregas</title>
+  <meta name="description" content="Roteirizador gratuito para entregas na Baixada Santista. Até 80+ paradas.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════ HERO — tudo acima do fold no celular ═══════ -->
+  <section class="hero">
+    <header class="brand">
+      <div class="brand-icon">🧭</div>
+      <h1>RotaFácil</h1>
+      <span class="region-tag">Baixada Santista</span>
+    </header>
+
+    <form class="addr-form" id="addrForm" autocomplete="off">
+      <div class="input-row">
+        <div class="autocomplete-wrap">
+          <input type="text" id="addrInput"
+                 placeholder="Rua, número, cidade..."
+                 autocomplete="off" spellcheck="false">
+          <div class="autocomplete-results" id="addrAutocomplete"></div>
+        </div>
+        <button type="button" id="micBtn" class="mic-btn" title="Ditar por voz">🎤</button>
+      </div>
+      <p class="input-hint" id="inputHint">Digite o endereço e selecione da lista</p>
+      <button type="submit" id="btnAdd" class="btn btn-primary btn-block" disabled>
+        + Adicionar à rota
+      </button>
+    </form>
+
+    <div class="map-card">
+      <div id="map"></div>
+      <button type="button" id="mapThemeBtn" class="map-theme-toggle" title="Tema do mapa">☀️</button>
+    </div>
+
+    <div class="hero-bottom">
+      <div class="stats-row" id="statsRow">
+        <span class="stat-item"><strong id="statTotal">0</strong> paradas</span>
+        <span class="stat-sep" id="statDistSep" style="display:none">·</span>
+        <span class="stat-item" id="statDistWrap" style="display:none"><strong id="statDist">—</strong></span>
+        <span class="stat-sep" id="statTimeSep" style="display:none">·</span>
+        <span class="stat-item" id="statTimeWrap" style="display:none"><strong id="statTime">—</strong></span>
+      </div>
+      <button type="button" id="btnOptimize" class="btn btn-accent btn-block">
+        🚀 Otimizar rota
+      </button>
+      <p class="opt-status" id="optStatus"></p>
+    </div>
+  </section>
+
+  <!-- ═══════ CONTEÚDO ROLÁVEL ═══════ -->
+  <section class="content">
+
+    <!-- Lista de paradas -->
+    <div class="card">
+      <div class="card-head">
+        <h2>📋 Paradas da rota</h2>
+        <span class="badge" id="stopsCountBadge">0</span>
+      </div>
+      <div id="stopsList">
+        <div class="empty-state" id="emptyState">
+          <span class="empty-icon">📦</span>
+          <p>Nenhuma parada adicionada.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ponto de partida -->
+    <details class="card expandable">
+      <summary>🏠 Ponto de partida (opcional)</summary>
+      <div class="expand-body">
+        <div class="autocomplete-wrap">
+          <input type="text" id="depotInput" placeholder="Endereço da base / depósito" autocomplete="off">
+          <div class="autocomplete-results" id="depotAutocomplete"></div>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="roundtripCheck">
+          <span>Retornar ao ponto de partida</span>
+        </label>
+      </div>
+    </details>
+
+    <!-- Importar lista -->
+    <details class="card expandable">
+      <summary>📋 Importar lista ou CSV</summary>
+      <div class="expand-body">
+        <textarea id="bulkInput" rows="4" placeholder="Um endereço por linha&#10;ou: Nome; Endereço, número, cidade"></textarea>
+        <button type="button" id="btnAddBulk" class="btn btn-secondary btn-block">+ Adicionar da lista</button>
+        <button type="button" id="btnUploadCsv" class="btn btn-secondary btn-block" style="margin-top:6px">📂 Importar CSV</button>
+        <input type="file" id="csvFile" accept=".csv" style="display:none">
+      </div>
+    </details>
+
+    <!-- Geocodificar -->
+    <details class="card expandable" id="geocodeDetails">
+      <summary>🔍 Geocodificar pendentes (<span id="statPending">0</span>)</summary>
+      <div class="expand-body">
+        <input type="email" id="nominatimEmail" placeholder="E-mail (opcional para Nominatim)">
+        <label class="check-row">
+          <input type="checkbox" id="brOnlyCheck" checked>
+          <span>Priorizar resultados no Brasil</span>
+        </label>
+        <button type="button" id="btnGeocode" class="btn btn-primary btn-block">🔍 Geocodificar</button>
+        <div id="geoProgressWrap" style="display:none;margin-top:10px">
+          <div id="geoProgressBar"><div id="geoProgressFill"></div></div>
+          <div id="geoProgressText"></div>
+          <div id="geoLog"></div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Ações -->
+    <div class="card actions-grid">
+      <button type="button" id="btnExportCsv" class="btn btn-secondary">📤 CSV</button>
+      <button type="button" id="btnGmapsFull" class="btn btn-secondary">🗺️ Maps</button>
+      <button type="button" id="btnPrint" class="btn btn-secondary">🖨️ Imprimir</button>
+      <button type="button" id="btnReset" class="btn btn-danger">🗑️ Limpar</button>
+    </div>
+
+    <footer class="app-footer">
+      100% gratuito · Nominatim/OSM · OSRM · Leaflet · sem API keys
+    </footer>
+  </section>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
