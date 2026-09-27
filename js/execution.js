@@ -1,7 +1,7 @@
 // execution.js — Gerencia o modo "Iniciar Rota" (Navegação Ponto a Ponto)
 
 import { state, orderedStops, save } from "./state.js";
-import { invalidateSize, redrawMap } from "./map.js";
+import { invalidateSize, redrawMap, focusMapOn } from "./map.js";
 import { renderManifest, updateStatusbar } from "./ui.js";
 import { showToast } from "./toast.js";
 
@@ -101,6 +101,9 @@ function updateExecutionUI() {
   const pct = Math.round((currentStopIndex / routeStops.length) * 100);
   $("#executionProgress").style.width = pct + "%";
 
+  // Focar o mapa no ponto atual
+  focusMapOn(stop.lat, stop.lon, 17);
+
   // Atualiza link do Gmaps (apenas este ponto)
   const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lon}&travelmode=driving`;
   $("#btnExecGmaps").href = gmapsUrl;
@@ -114,18 +117,22 @@ function handleStopAction(action) {
   const stop = routeStops[currentStopIndex];
 
   if (action === "delivered") {
+    stop.status = "delivered";
     stop.done = true;
     showToast("Marcado como entregue!", "success");
   } else if (action === "failed") {
+    stop.status = "failed";
     stop.error = "Não entregue";
-    stop.done = false; // Garante que não está marcado como sucesso
+    stop.done = false;
     showToast("Marcado como não entregue.", "error");
   } else if (action === "wait") {
+    stop.status = "wait";
+    stop.done = false;
     showToast("Pulando para a próxima parada.", "warning");
-    // Não altera o status, apenas pula na interface
   }
 
   save();
+  redrawMap(); // Atualiza cores dos pinos no mapa
   
   // Avança para o próximo
   currentStopIndex++;

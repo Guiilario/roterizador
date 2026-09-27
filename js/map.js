@@ -60,10 +60,18 @@ function escapeHtml(str) {
   );
 }
 
-function pinIcon(label, { done = false, isDepot = false } = {}) {
+export function focusMapOn(lat, lon, zoom = 16) {
+  if (map) map.flyTo([lat, lon], zoom, { animate: true, duration: 1.5 });
+}
+
+function pinIcon(label, { done = false, isDepot = false, status = null } = {}) {
   const cls = ["pin"];
   if (done) cls.push("done");
   if (isDepot) cls.push("depot");
+  if (status === "delivered") cls.push("delivered");
+  if (status === "wait") cls.push("wait");
+  if (status === "failed") cls.push("failed");
+  
   return L.divIcon({
     html: `<div class="${cls.join(" ")}"><span>${label}</span></div>`,
     className: "leaflet-div-icon",
@@ -79,19 +87,37 @@ export function redrawMap() {
   if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
   const bounds = [];
 
+  const seenCoords = new Set();
+  const getJitteredCoord = (lat, lon) => {
+    let key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+    let offsetLat = 0, offsetLon = 0;
+    let attempts = 0;
+    while (seenCoords.has(key) && attempts < 10) {
+      attempts++;
+      // Aprox 5-10 metros de offset em espiral
+      offsetLat += (Math.random() - 0.5) * 0.0001;
+      offsetLon += (Math.random() - 0.5) * 0.0001;
+      key = `${(lat + offsetLat).toFixed(5)},${(lon + offsetLon).toFixed(5)}`;
+    }
+    seenCoords.add(key);
+    return [lat + offsetLat, lon + offsetLon];
+  };
+
   if (state.depot.geocoded) {
-    const m = L.marker([state.depot.lat, state.depot.lon], { icon: pinIcon("P", { isDepot: true }) });
+    const [lat, lon] = getJitteredCoord(state.depot.lat, state.depot.lon);
+    const m = L.marker([lat, lon], { icon: pinIcon("P", { isDepot: true }) });
     m.bindPopup(`<b>Partida</b><br>${escapeHtml(state.depot.address)}`);
     m.addTo(markersLayer);
-    bounds.push([state.depot.lat, state.depot.lon]);
+    bounds.push([lat, lon]);
   }
 
   orderedStops().forEach((s, idx) => {
     if (!s.geocoded) return;
-    const m = L.marker([s.lat, s.lon], { icon: pinIcon(String(idx + 1), { done: s.done }) });
+    const [lat, lon] = getJitteredCoord(s.lat, s.lon);
+    const m = L.marker([lat, lon], { icon: pinIcon(String(idx + 1), { done: s.done, status: s.status }) });
     m.bindPopup(`<b>${idx + 1}. ${escapeHtml(s.name)}</b><br>${escapeHtml(s.address)}`);
     m.addTo(markersLayer);
-    bounds.push([s.lat, s.lon]);
+    bounds.push([lat, lon]);
   });
 
   if (state.routeGeoJSON) {
